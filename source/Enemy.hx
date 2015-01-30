@@ -22,6 +22,7 @@ class Enemy extends FlxSprite implements IntelligentAgent
 	var _tileWidth = 16;
 	var _tileHeight = 16;
 	var _pursueTarget:FlxObject;
+	var _missingPursueTarget:Float = 0;
 	var _facingDir:FlxVector;
 	var _eyeSight:Int;
 	var _scene:LevelScene;
@@ -127,8 +128,27 @@ class Enemy extends FlxSprite implements IntelligentAgent
 			}
 		}
 
-		// if (!foundAnything)
-		// 	FlxG.log.add("Not seeing anything!");
+		if (foundAnything)
+		{
+			if (_pursueTarget != null)
+			{
+				if (_missingPursueTarget >= 3.0)
+				{
+					// clear the target
+					_pursueTarget = null;
+					_missingPursueTarget = 0;
+					FlxG.log.add("I lost him, go back to normal.");
+				}
+				else
+				{
+					if (_missingPursueTarget > 0)
+					{
+						FlxG.log.add("Can't see him, trying to recover...");
+					}
+					_missingPursueTarget += FlxG.elapsed;
+				}
+			}
+		}
 	}
 
 	function detectObject(x:Int, y:Int):Bool
@@ -152,14 +172,17 @@ class Enemy extends FlxSprite implements IntelligentAgent
 
 	function determineObject(x:Int, y:Int):Void
 	{
+
 		var type:LevelScene.SceneObjectType = _scene.checkObjectOnTilemap(x, y);
 		switch(type)
 		{
 			case LevelScene.SceneObjectType.Player:
 				FlxG.log.add('Saw player on $x, $y');
 				_pursueTarget = _scene.getPlayer();
+				_missingPursueTarget = 0; // reset timer
 			case LevelScene.SceneObjectType.Occluded:
 				FlxG.log.add('Cannot see through beyond $x, $y');
+
 
 			default:
 		}
