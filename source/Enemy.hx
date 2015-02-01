@@ -11,8 +11,12 @@ class Enemy extends FlxSprite implements IntelligentAgent
 {
 	public var _speed:Float = 80;
 	public var tilePosition(get, never):IntPoint;
+	public var senseInterval(default, default):Float;
 
-	function get_tilePosition():IntPoint
+	var _senseElapsed:Float = 0;
+	var _senseInterval:Float;
+
+	function get_tilePosition()
 	{
 		return new IntPoint(
 			Std.int(this.x / _tileWidth), 
@@ -71,13 +75,22 @@ class Enemy extends FlxSprite implements IntelligentAgent
 		FlxG.watch.add(this, "_facingDir", "Enemy facing");
 
 		this.drag.x = this.drag.y = 1600;
+
+		// default sense interval is 2 sec
+		senseInterval = 2.0;
 	}
 
 	override public function update():Void
 	{
 		super.update();
 
-		sense();
+		_senseElapsed += FlxG.elapsed;
+		if (_senseElapsed > senseInterval)
+		{
+			sense();
+			_senseElapsed = 0;
+		}
+
 		think();
 		react();
 	}
@@ -145,7 +158,8 @@ class Enemy extends FlxSprite implements IntelligentAgent
 					{
 						FlxG.log.add("Can't see him, trying to recover...");
 					}
-					_missingPursueTarget += FlxG.elapsed;
+					// missing time increment now is _senseElapsed
+					_missingPursueTarget += _senseElapsed;
 				}
 			}
 		}
