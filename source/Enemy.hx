@@ -12,7 +12,7 @@ import flixel.tweens.motion.*;
 
 class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAgent
 {
-	public var _speed:Float = 30;
+	public var _speed:Float = 60;
 	public var tilePosition(get, never):IntPoint;
 	public var senseInterval(default, default):Float;
 	public var rerouteInterval(default, default):Float;
@@ -96,6 +96,8 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 	{
 		super.update();
 
+		syncDirection();
+
 		_senseElapsed += FlxG.elapsed;
 		if (_senseElapsed > senseInterval)
 		{
@@ -106,13 +108,30 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 		think();
 		react();
 
-		determineDirection();
-
 		_counter += 1;
 	}
 
-	function determineDirection()
+	function syncDirection()
 	{
+		if (_followPath != null)
+		{
+			var facingValue = _followPath.getCurrentDirection();
+			if (facingValue >= 0)
+				facing = facingValue;
+		}
+
+		switch(facing)
+		{
+			case FlxObject.LEFT:
+				_facingDir = LEFT_DIR;
+			case FlxObject.RIGHT:
+				_facingDir = RIGHT_DIR;
+			case FlxObject.UP:
+				_facingDir = UP_DIR;
+			case FlxObject.DOWN:
+				_facingDir = DOWN_DIR;
+			default:
+		}
 
 	}
 
@@ -255,9 +274,6 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 
 	public function follow(waypoints:Array<FlxPoint>):Void
 	{
-		//var first = waypoints[0];
-		//var last = waypoints[waypoints.length-1];
-		
 		if (_waypointChanged)
 		{
 			FlxG.log.add('following $_counter');
