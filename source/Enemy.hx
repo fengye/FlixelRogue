@@ -9,6 +9,7 @@ import flixel.util.FlxColor;
 import flixel.util.FlxPoint;
 import flixel.tweens.*;
 import flixel.tweens.motion.*;
+import flixel.tweens.FlxEase;
 
 class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAgent
 {
@@ -24,6 +25,8 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 	var _waypointChanged:Bool = false;
 	var _followPath:LinearPath; // save handle for cancelling
 	var _spawnPoint:FlxPoint;
+	var _idleChangeFacingTimer:Float = 0;
+	var _backSpawnPointTimer:Float = 0;
 
 
 	function get_tilePosition()
@@ -68,7 +71,7 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 		_scene = scene;
 
 		// random facing
-		switch(FlxRandom.int() % 4)
+		switch(FlxRandom.intRanged(0, 3))
 		{
 			case 0:
 				_facingDir = LEFT_DIR;
@@ -85,7 +88,7 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 			default:
 		}
 		// FlxG.watch.add(this, "_facingDir", "Enemy facing");
-		FlxG.log.add("Spawn enemy");
+		// FlxG.log.add("Spawn enemy");
 
 		this.drag.x = this.drag.y = 1600;
 
@@ -194,6 +197,9 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 					// clear the target
 					_pursueTarget = null;
 					_missingPursueTarget = 0;
+					_backSpawnPointTimer = 0;
+					
+					stopFollowing();
 					//FlxG.log.add("I lost him, go back to normal.");
 				}
 				else
@@ -269,15 +275,27 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 		}
 		else
 		{
-			// check if I'm distance away from my spawn point
-			if (_spawnPoint.distanceTo(new FlxPoint(x, y)) > 50)
+			
+			if ( _waypoints == null)
 			{
-				FlxG.log.add('go back to spawn point $_spawnPoint');
-				// go back to my spawn point
-				_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), _spawnPoint);
-				sanitizeWaypoints();
+				// FlxG.log.add('Idle to back $_backSpawnPointTimer');
+				_backSpawnPointTimer += FlxG.elapsed;
 
-				_waypointChanged = true;
+				if (_backSpawnPointTimer > 5.0 && _spawnPoint.distanceTo(new FlxPoint(x, y)) > 50)
+				{
+					// check if I'm distance away from my spawn point
+					// FlxG.log.add('$_backSpawnPointTimer back to spawn point $_spawnPoint');
+					// go back to my spawn point
+					_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), _spawnPoint);
+					sanitizeWaypoints();
+
+					_waypointChanged = true;
+					_backSpawnPointTimer = 0;
+				}
+				else
+				{
+					// idle
+				}
 			}
 		}
 	}
@@ -305,12 +323,22 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 
 			if (waypoints != null)
 			{
-				_followPath = FlxTween.linearPath(this, waypoints, _speed, false);
+				_followPath = FlxTween.linearPath(this, waypoints, _speed, false, {
+						type : FlxTween.ONESHOT, complete: onTweenCompletion
+					});
 			}
 
 			_waypointChanged = false;
 			
 		}
+	}
+
+	function onTweenCompletion(tween:FlxTween):Void
+	{
+		_waypoints = null;
+		_followPath = null;
+
+
 	}
 
 	function stopFollowing():Void
@@ -320,12 +348,44 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 			_followPath.cancel();
 			_followPath = null;
 		}
+
+		if (_waypoints != null)
+		{
+			_waypoints = null;
+		}
 	}
 
 	public function react():Void
 	{
-		//velocity = _facingDir.scale(_speed);
-
 		follow(_waypoints);
+
+		if (_waypoints == null)
+		{
+			_idleChangeFacingTimer += FlxG.elapsed;
+			if (_idleChangeFacingTimer > 2.5)
+			{
+				// change facing
+				var r = FlxRandom.intRanged(0, 3);
+
+				switch(r)
+				{
+					case 0:
+						_facingDir = LEFT_DIR;
+						facing = FlxObject.LEFT;
+					case 1:
+						_facingDir = RIGHT_DIR;
+						facing = FlxObject.RIGHT;
+					case 2:
+						_facingDir = UP_DIR;
+						facing = FlxObject.UP;
+					case 3:
+						_facingDir = DOWN_DIR;
+						facing = FlxObject.DOWN;
+					default:
+				}
+
+				_idleChangeFacingTimer = 0;
+			}
+		}
 	}
 }
