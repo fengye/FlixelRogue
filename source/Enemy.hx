@@ -22,7 +22,9 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 	var _rerouteElapsed:Float = 0;
 	var _counter:Int = 0; // debug usage
 	var _waypointChanged:Bool = false;
-	var _followPath:LinearPath;
+	var _followPath:LinearPath; // save handle for cancelling
+	var _spawnPoint:FlxPoint;
+
 
 	function get_tilePosition()
 	{
@@ -50,6 +52,8 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 	{
 		super(x, y);
 
+		_spawnPoint = new FlxPoint(x, y);
+
 		loadGraphic(AssetPaths.enemy__png, true, 16, 16);
 		setSize(14, 14);
 
@@ -64,8 +68,7 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 		_scene = scene;
 
 		// random facing
-		// switch(FlxRandom.int() % 4)
-		switch(1)
+		switch(FlxRandom.int() % 4)
 		{
 			case 0:
 				_facingDir = LEFT_DIR;
@@ -81,7 +84,8 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 				facing = FlxObject.DOWN;
 			default:
 		}
-		FlxG.watch.add(this, "_facingDir", "Enemy facing");
+		// FlxG.watch.add(this, "_facingDir", "Enemy facing");
+		FlxG.log.add("Spawn enemy");
 
 		this.drag.x = this.drag.y = 1600;
 
@@ -252,14 +256,7 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 			{
 				//_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), new FlxPoint(16, 16));
 				_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), new FlxPoint(_pursueTarget.x, _pursueTarget.y));
-				if (_waypoints != null )
-				{
-					if (_waypoints.length == 1)
-					{
-						// make it as least 2 elements
-						_waypoints.push(_waypoints[0]);
-					}
-				}
+				sanitizeWaypoints();
 
 				_rerouteElapsed = 0;
 				
@@ -268,6 +265,32 @@ class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAge
 			else
 			{
 				_rerouteElapsed += FlxG.elapsed;
+			}
+		}
+		else
+		{
+			// check if I'm distance away from my spawn point
+			if (_spawnPoint.distanceTo(new FlxPoint(x, y)) > 50)
+			{
+				FlxG.log.add('go back to spawn point $_spawnPoint');
+				// go back to my spawn point
+				_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), _spawnPoint);
+				sanitizeWaypoints();
+
+				_waypointChanged = true;
+			}
+		}
+	}
+
+	// make sure wayspoints contains points no less than 2 
+	private function sanitizeWaypoints()
+	{
+		if (_waypoints != null )
+		{
+			if (_waypoints.length == 1)
+			{
+				// make it as least 2 elements
+				_waypoints.push(_waypoints[0]);
 			}
 		}
 	}
