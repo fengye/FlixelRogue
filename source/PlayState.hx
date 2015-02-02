@@ -9,6 +9,8 @@ import flixel.ui.FlxButton;
 
 // import flixel.tile.FlxTilemap;
 import flixel.FlxCamera;
+import flixel.plugin.*;
+import flixel.tweens.*;
 
 /**
  * A FlxState which can be used for the actual gameplay.
@@ -17,7 +19,7 @@ class PlayState extends FlxState
 {
 
 	
-	private var _scene:LevelScene;
+	private var _scene:Scene;
 	private var _data:Float = 10.0;
 
 	private var _player:Player;
@@ -32,7 +34,7 @@ class PlayState extends FlxState
 
 		FlxG.watch.add(this, "_clearTileIndices");
 
-		_scene = new LevelScene();
+		_scene = new Scene();
 
 		for(obj in _scene.getSceneObjects())
 		{

@@ -6,15 +6,23 @@ import flixel.FlxObject;
 import flixel.util.FlxVector;
 import flixel.util.FlxRandom;
 import flixel.util.FlxColor;
+import flixel.util.FlxPoint;
+import flixel.tweens.*;
+import flixel.tweens.motion.*;
 
-class Enemy extends FlxSprite implements IntelligentAgent
+class Enemy extends FlxSprite implements IntelligentAgent implements SteeringAgent
 {
-	public var _speed:Float = 80;
+	public var _speed:Float = 30;
 	public var tilePosition(get, never):IntPoint;
 	public var senseInterval(default, default):Float;
+	public var rerouteInterval(default, default):Float;
 
 	var _senseElapsed:Float = 0;
-	var _senseInterval:Float;
+	var _waypoints:Array<FlxPoint>;
+	var _rerouteElapsed:Float = 0;
+	var _counter:Int = 0; // debug usage
+	var _waypointChanged:Bool = false;
+	var _followPath:LinearPath;
 
 	function get_tilePosition()
 	{
@@ -29,7 +37,7 @@ class Enemy extends FlxSprite implements IntelligentAgent
 	var _missingPursueTarget:Float = 0;
 	var _facingDir:FlxVector;
 	var _eyeSight:Int;
-	var _scene:LevelScene;
+	var _scene:Scene;
 
 
 	static var LEFT_DIR = new FlxVector(-1, 0);
@@ -38,7 +46,7 @@ class Enemy extends FlxSprite implements IntelligentAgent
 	static var DOWN_DIR = new FlxVector(0, 1);
 
 
-	public function new(scene:LevelScene, x:Float, y:Float, tileWidth:Int, tileHeight:Int, eyeSight:Int)
+	public function new(scene:Scene, x:Float, y:Float, tileWidth:Int, tileHeight:Int, eyeSight:Int)
 	{
 		super(x, y);
 
@@ -56,7 +64,8 @@ class Enemy extends FlxSprite implements IntelligentAgent
 		_scene = scene;
 
 		// random facing
-		switch(FlxRandom.int() % 4)
+		// switch(FlxRandom.int() % 4)
+		switch(1)
 		{
 			case 0:
 				_facingDir = LEFT_DIR;
@@ -77,7 +86,10 @@ class Enemy extends FlxSprite implements IntelligentAgent
 		this.drag.x = this.drag.y = 1600;
 
 		// default sense interval is 2 sec
-		senseInterval = 2.0;
+		senseInterval = 0.5;
+		_senseElapsed = 0;
+		rerouteInterval = 0.3;
+		_rerouteElapsed = senseInterval + 0.01;
 	}
 
 	override public function update():Void
@@ -93,6 +105,15 @@ class Enemy extends FlxSprite implements IntelligentAgent
 
 		think();
 		react();
+
+		determineDirection();
+
+		_counter += 1;
+	}
+
+	function determineDirection()
+	{
+
 	}
 
 	override public function draw():Void
@@ -145,18 +166,18 @@ class Enemy extends FlxSprite implements IntelligentAgent
 		{
 			if (_pursueTarget != null)
 			{
-				if (_missingPursueTarget >= 3.0)
+				if (_missingPursueTarget > 1.0)
 				{
 					// clear the target
 					_pursueTarget = null;
 					_missingPursueTarget = 0;
-					FlxG.log.add("I lost him, go back to normal.");
+					//FlxG.log.add("I lost him, go back to normal.");
 				}
 				else
 				{
 					if (_missingPursueTarget > 0)
 					{
-						FlxG.log.add("Can't see him, trying to recover...");
+						//FlxG.log.add("Can't see him, trying to recover...");
 					}
 					// missing time increment now is _senseElapsed
 					_missingPursueTarget += _senseElapsed;
@@ -168,13 +189,13 @@ class Enemy extends FlxSprite implements IntelligentAgent
 	function detectObject(x:Int, y:Int):Bool
 	{
 		// should introduce tilemap/scene representation
-		var type:LevelScene.SceneObjectType = _scene.checkObjectOnTilemap(x, y);
+		var type:Scene.SceneObjectType = _scene.checkObjectOnTilemap(x, y);
 		switch(type)
 		{
-			case LevelScene.SceneObjectType.Player:
+			case Scene.SceneObjectType.Player:
 				//FlxG.log.add('Saw player on $x, $y');
 				return true;
-			case LevelScene.SceneObjectType.Occluded:
+			case Scene.SceneObjectType.Occluded:
 				//FlxG.log.add('Cannot see through beyond $x, $y');
 				return true;
 			default:
@@ -187,15 +208,15 @@ class Enemy extends FlxSprite implements IntelligentAgent
 	function determineObject(x:Int, y:Int):Void
 	{
 
-		var type:LevelScene.SceneObjectType = _scene.checkObjectOnTilemap(x, y);
+		var type:Scene.SceneObjectType = _scene.checkObjectOnTilemap(x, y);
 		switch(type)
 		{
-			case LevelScene.SceneObjectType.Player:
-				FlxG.log.add('Saw player on $x, $y');
+			case Scene.SceneObjectType.Player:
+				//FlxG.log.add('Saw player on $x, $y');
 				_pursueTarget = _scene.getPlayer();
 				_missingPursueTarget = 0; // reset timer
-			case LevelScene.SceneObjectType.Occluded:
-				FlxG.log.add('Cannot see through beyond $x, $y');
+			case Scene.SceneObjectType.Occluded:
+				//FlxG.log.add('Cannot see through beyond $x, $y');
 
 
 			default:
@@ -204,11 +225,68 @@ class Enemy extends FlxSprite implements IntelligentAgent
 
 	public function think():Void
 	{
+		// Mindless walk towards the target
+		// Work out a path from current position to target position, from tile map
+		if (_pursueTarget != null )
+		{
+			 if (_rerouteElapsed > rerouteInterval)
+			{
+				//_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), new FlxPoint(16, 16));
+				_waypoints = _scene.findPath(new FlxPoint(this.x, this.y), new FlxPoint(_pursueTarget.x, _pursueTarget.y));
+				if (_waypoints != null )
+				{
+					if (_waypoints.length == 1)
+					{
+						// make it as least 2 elements
+						_waypoints.push(_waypoints[0]);
+					}
+				}
 
+				_rerouteElapsed = 0;
+				
+				_waypointChanged = true;
+			}
+			else
+			{
+				_rerouteElapsed += FlxG.elapsed;
+			}
+		}
+	}
+
+	public function follow(waypoints:Array<FlxPoint>):Void
+	{
+		//var first = waypoints[0];
+		//var last = waypoints[waypoints.length-1];
+		
+		if (_waypointChanged)
+		{
+			FlxG.log.add('following $_counter');
+
+			stopFollowing();
+
+			if (waypoints != null)
+			{
+				_followPath = FlxTween.linearPath(this, waypoints, _speed, false);
+			}
+
+			_waypointChanged = false;
+			
+		}
+	}
+
+	function stopFollowing():Void
+	{
+		if (_followPath != null)
+		{
+			_followPath.cancel();
+			_followPath = null;
+		}
 	}
 
 	public function react():Void
 	{
 		//velocity = _facingDir.scale(_speed);
+
+		follow(_waypoints);
 	}
 }

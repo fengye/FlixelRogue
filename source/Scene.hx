@@ -4,6 +4,7 @@ import flixel.FlxG;
 import flixel.FlxBasic;
 import flixel.FlxObject;
 import flixel.tile.FlxTilemap;
+import flixel.util.FlxPoint;
 
 enum SceneObjectType
 {
@@ -14,7 +15,7 @@ enum SceneObjectType
 	Item;
 }
 
-class LevelScene 
+class Scene 
 {
 	private var _player:Player;
 	private var _maploader:OgmoLoaderEx;
@@ -89,6 +90,10 @@ class LevelScene
 	public function update()
 	{
 		FlxG.collide(_map, _player);
+		for(enemy in _enemyList)
+		{
+			FlxG.collide(_map, enemy);
+		}
 	}
 
 	public function getPlayer():Player
@@ -110,5 +115,10 @@ class LevelScene
 			arr.push(enemy);
 		}
 		return arr;
+	}
+
+	public function findPath(Start:FlxPoint, End:FlxPoint, ?Simplify:Bool = true, ?RaySimplify:Bool = false, ?WideDiagonal:Bool = true):Array<FlxPoint>
+	{
+		return _map.findPath(Start, End, Simplify, RaySimplify, WideDiagonal);
 	}
 }
