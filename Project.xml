@@ -29,6 +29,8 @@
 	
 	<set name="BUILD_DIR" value="export" />
 	<classpath name="source" />
+	<classpath name="source/Actions" />
+	<classpath name="source/Conditions" />
 	<assets path="assets" />
 	
 	<!--------------------------------LIBRARIES------------------------------------->

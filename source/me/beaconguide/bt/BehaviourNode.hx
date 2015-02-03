@@ -1,15 +1,20 @@
 package me.beaconguide.bt;
 
-enum NodeStatus
-{
-	FAILURE;
-	SUCCESS;
-	RUNNING;
-}
-
 class BehaviourNode
 {
 	var _children:Array<BehaviourNode> = new Array<BehaviourNode>();
+	var _caller:Dynamic;
+	var _context:Dynamic;
+		
+	public function setCaller(caller:Dynamic):Void
+	{
+		_caller = caller;
+	}
+
+	public function setContext(context:Dynamic):Void
+	{
+		_context = context;
+	}
 
 	public function addChild(node:BehaviourNode):Void
 	{
@@ -24,6 +29,11 @@ class BehaviourNode
 	public function removeChild(node:BehaviourNode):Bool
 	{
 		return false;
+	}
+
+	public function getChildCount():Int
+	{
+		return _children.length;
 	}
 
 	public function getChild(pos:Int):BehaviourNode

@@ -2,7 +2,7 @@ package me.beaconguide.bt;
 
 class ActionNode extends BehaviourNode
 {
-	public function run():NodeStatus
+	override public function run():NodeStatus
 	{
 		return doAction();
 	}

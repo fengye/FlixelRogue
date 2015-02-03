@@ -2,7 +2,7 @@ package me.beaconguide.bt;
 
 class SequenceNode extends BehaviourNode
 {
-	public function run():NodeStatus
+	override public function run():NodeStatus
 	{
 		for(child in _children)
 		{
@@ -12,6 +12,7 @@ class SequenceNode extends BehaviourNode
 					return NodeStatus.FAILURE;
 				case NodeStatus.RUNNING:
 					return NodeStatus.RUNNING;
+				default:
 			}
 		}
 
